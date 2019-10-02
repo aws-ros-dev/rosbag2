@@ -14,6 +14,7 @@
 
 #include "rosbag2/writer.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -119,6 +120,29 @@ void Writer::initialize_metadata_()
   metadata_.bag_size = 0;
 }
 
+bool topic_already_exists(TopicInformation ti_to_find, std::vector<TopicInformation> topic_list)
+{
+  // Checks if a topic already exists in a vector of TopicInformation
+  // Use a (lambda) predicate to check if the topic exists
+  return std::find_if(topic_list.begin(), topic_list.end(), ti_to_find) != topic_list.end();
+}
+
+std::vector<TopicInformation> get_topics_no_duplicates(
+    std::vector<TopicInformation> prev_topics,
+    std::vector<TopicInformation> new_topics)
+{
+  // Iterate through the new incoming topics and check if any exist in the previous metadata topics.
+  // Add only the ones that don't already exist.
+  std::vector<TopicInformation> topics_no_duplicates;
+  for (auto topic_information : new_topics) {
+    if (!topic_already_exists(topic_information, prev_topics))
+    {
+      topics_no_duplicates.push_back(topic_information);
+    }
+  }
+  return topics_no_duplicates;
+}
+
 void Writer::aggregate_metadata_(rosbag2_storage::BagMetadata metadata)
 {
   metadata_.storage_identifier = metadata.storage_identifier;
@@ -134,10 +158,14 @@ void Writer::aggregate_metadata_(rosbag2_storage::BagMetadata metadata)
 
   metadata_.duration += metadata.duration;
   metadata_.bag_size = metadata.bag_size;
+  // Check to make sure topic doesn't already exist
+  std::vector<TopicInformation> metadata_topics_no_duplicates =
+      get_topics_no_duplicates(metadata_.topics_with_message_count, metadata.topics_with_message_count);
+
   metadata_.topics_with_message_count.insert(
     metadata_.topics_with_message_count.end(),
-    metadata.topics_with_message_count.begin(),
-    metadata.topics_with_message_count.end());
+    metadata_topics_no_duplicates.begin(),
+    metadata_topics_no_duplicates.end());
 }
 
 }  // namespace rosbag2

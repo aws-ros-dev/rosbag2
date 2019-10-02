@@ -29,6 +29,12 @@ struct TopicInformation
 {
   TopicMetadata topic_metadata;
   size_t message_count;
+
+  bool operator==(const rosbag2_storage::TopicInformation & rhs) const
+  {
+    return topic_metadata == rhs.topic_metadata;
+  }
+
 };
 
 struct BagMetadata
