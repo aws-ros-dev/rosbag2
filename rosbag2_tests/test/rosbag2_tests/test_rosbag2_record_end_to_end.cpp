@@ -14,6 +14,8 @@
 
 #include <gmock/gmock.h>
 
+#include <cstddef>
+#include <fstream>
 #include <string>
 
 // rclcpp.hpp included in record_fixture.hpp must be included before process_execution_helpers.hpp
@@ -99,4 +101,36 @@ TEST_F(RecordFixture, record_fails_gracefully_if_plugin_for_given_encoding_does_
   EXPECT_THAT(exit_code, Eq(EXIT_SUCCESS));
   EXPECT_THAT(
     error_output, HasSubstr("Requested converter for format 'some_rmw' does not exist"));
+}
+
+TEST_F(RecordFixture, record_check_database_split) {
+  auto message = get_messages_strings()[1];
+  message->string_value = "test";
+  size_t expected_test_messages = 30;
+  unsigned int expected_file_size = 2048; // bytes
+
+  auto process_handle = start_execution("ros2 bag record -b " + std::to_string(expected_file_size) + " --output " +
+      bag_path_ + " /test_topic");
+  wait_for_db();
+
+  pub_man_.add_publisher("/test_topic", message, expected_test_messages);
+
+  rosbag2_storage_plugins::SqliteWrapper
+  db(database_path_, rosbag2_storage::storage_interfaces::IOFlag::READ_ONLY);
+  pub_man_.run_publishers([this, &db](const std::string & topic_name) {
+      return count_stored_messages(db, topic_name);
+  });
+
+  stop_execution(process_handle);
+
+  std::streampos begin, end, size;
+  std::ifstream bagfile(bag_path_, ios::binary);
+  begin = bagfile.tellg();
+  bagfile.seekg(0, ios::end);
+  end = bagfile.tellg();
+  bagfile.close();
+  size = end-begin;
+
+  EXPECT_GE(size, expected_file_size);
+
 }
