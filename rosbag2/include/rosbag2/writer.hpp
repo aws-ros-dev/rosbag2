@@ -17,6 +17,8 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "rosbag2_storage/metadata_io.hpp"
 #include "rosbag2_storage/storage_factory.hpp"
@@ -110,6 +112,12 @@ private:
   std::unique_ptr<rosbag2_storage::MetadataIo> metadata_io_;
   std::unique_ptr<Converter> converter_;
   uint64_t max_bagfile_size_;
+  std::vector<std::string> relative_file_paths_;
+  uint64_t message_count_;
+  std::unordered_map<std::string, TopicInformation> topics_;
+  rcutils_time_point_value_t start_time_;
+  rcutils_time_point_value_t end_time_;
+  rosbag2_storage::BagMetadata generate_metadata_() const;
 };
 
 }  // namespace rosbag2
