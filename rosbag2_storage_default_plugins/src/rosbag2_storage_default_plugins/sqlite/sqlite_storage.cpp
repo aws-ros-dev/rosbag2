@@ -39,40 +39,27 @@ namespace rosbag2_storage_plugins
 void SqliteStorage::open(
   const std::string & uri, rosbag2_storage::storage_interfaces::IOFlag io_flag)
 {
-  auto metadata = is_read_only(io_flag) ?
-    load_metadata(uri) :
-    std::unique_ptr<rosbag2_storage::BagMetadata>();
+  ROSBAG2_STORAGE_DEFAULT_PLUGINS_LOG_INFO_STREAM("Opening DB: " << uri << ".");
 
-  if (metadata) {
-    if (metadata->relative_file_paths.empty()) {
-      throw std::runtime_error(
-              "Failed to read from bag '" + uri + "': Missing database file path in metadata");
-    }
 
-    database_name_ = metadata->relative_file_paths[0];
-  } else {
-    if (is_read_only(io_flag)) {
-      throw std::runtime_error("Failed to read from bag '" + uri + "': No metadata found.");
-    }
-
-    database_name_ = rosbag2_storage::FilesystemHelper::get_folder_name(uri) + ".db3";
-  }
-
-  std::string database_path = rosbag2_storage::FilesystemHelper::concat({uri, database_name_});
-  if (is_read_only(io_flag) && !database_exists(database_path)) {
-    throw std::runtime_error(
-            "Failed to read from bag '" + uri + "': File '" + database_name_ + "' does not exist.");
+  if (is_read_only(io_flag) && !database_exists(uri)) {
+    throw std::runtime_error("Failed to read from bag: File '" + uri + "' does not exist!");
   }
 
   try {
-    database_ = std::make_unique<SqliteWrapper>(database_path, io_flag);
+    database_ = std::make_unique<SqliteWrapper>(uri, io_flag);
   } catch (const SqliteException & e) {
     throw std::runtime_error("Failed to setup storage. Error: " + std::string(e.what()));
   }
 
-  if (!metadata) {
+  if (!is_read_only(io_flag)) {
     initialize();
   }
+
+  // Reset the read and write statements in case the database changed.
+  //  These will be reinitialized lazily on the first read or write.
+  read_statement_ = nullptr;
+  write_statement_ = nullptr;
 
   uri_ = uri;
   ROSBAG2_STORAGE_DEFAULT_PLUGINS_LOG_INFO_STREAM("Opened database '" << uri << "'.");
@@ -128,8 +115,7 @@ std::vector<rosbag2_storage::TopicMetadata> SqliteStorage::get_all_topics_and_ty
 
 uint64_t SqliteStorage::get_bagfile_size() const
 {
-  return rosbag2_storage::FilesystemHelper::get_file_size(
-    rosbag2_storage::FilesystemHelper::concat({uri_, database_name_}));
+  return rosbag2_storage::FilesystemHelper::get_file_size(uri_);
 }
 
 void SqliteStorage::initialize()
@@ -203,17 +189,6 @@ void SqliteStorage::fill_topics_and_types()
   }
 }
 
-std::unique_ptr<rosbag2_storage::BagMetadata> SqliteStorage::load_metadata(const std::string & uri)
-{
-  try {
-    rosbag2_storage::MetadataIo metadata_io;
-    return std::make_unique<rosbag2_storage::BagMetadata>(metadata_io.read_metadata(uri));
-  } catch (std::exception & e) {
-    ROSBAG2_STORAGE_DEFAULT_PLUGINS_LOG_ERROR("Failed to load metadata: %s", e.what());
-    return std::unique_ptr<rosbag2_storage::BagMetadata>();
-  }
-}
-
 bool SqliteStorage::database_exists(const std::string & uri)
 {
   std::ifstream database(uri);
@@ -234,7 +209,7 @@ rosbag2_storage::BagMetadata SqliteStorage::get_metadata()
 {
   rosbag2_storage::BagMetadata metadata;
   metadata.storage_identifier = get_identifier();
-  metadata.relative_file_paths = {database_name_};
+  metadata.relative_file_paths = {uri_};
 
   metadata.message_count = 0;
   metadata.topics_with_message_count = {};

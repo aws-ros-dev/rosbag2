@@ -41,14 +41,19 @@ Writer::Writer(
   relative_file_paths_({}),
   message_count_(0),
   topics_({}),
+  bagfile_counter_(0),
   start_time_(INT64_MAX),
-  end_time_(INT64_MIN)
+  end_time_(INT64_MIN),
+  storage_id_("")
 {}
 
 Writer::~Writer()
 {
-  if (!uri_.empty()) {
-    metadata_io_->write_metadata(uri_, storage_->get_metadata());
+  if (!uri_.empty() && storage_) {
+    auto metadata = generate_metadata_();
+    auto dir_name = rosbag2_storage::FilesystemHelper::get_folder_name(uri_);
+
+    metadata_io_->write_metadata(dir_name, metadata);
   }
 
   storage_.reset();  // Necessary to ensure that the storage is destroyed before the factory
@@ -59,7 +64,9 @@ void Writer::open(
   const StorageOptions & storage_options,
   const ConverterOptions & converter_options)
 {
+  uri_ = storage_options.uri;
   max_bagfile_size_ = storage_options.max_bagfile_size;
+  storage_id_ = storage_options.storage_id;
 
   if (converter_options.output_serialization_format !=
     converter_options.input_serialization_format)
@@ -67,12 +74,13 @@ void Writer::open(
     converter_ = std::make_unique<Converter>(converter_options, converter_factory_);
   }
 
-  storage_ = storage_factory_->open_read_write(storage_options.uri, storage_options.storage_id);
+  auto bagfile_uri = next_bagfile_uri_();
+
+  storage_ = storage_factory_->open_read_write(bagfile_uri, storage_options.storage_id);
   if (!storage_) {
     throw std::runtime_error("No storage could be initialized. Abort");
   }
 
-  uri_ = storage_options.uri;
   start_time_ = std::chrono::nanoseconds::max().count();
   end_time_ = std::chrono::nanoseconds::min().count();
 }
@@ -105,6 +113,24 @@ void Writer::remove_topic(const TopicMetadata & topic_with_type)
   topics_.erase(topic_with_type.name);
 }
 
+void Writer::split_bagfile_()
+{
+  auto bagfile_uri = next_bagfile_uri_();
+
+  storage_ = storage_factory_->open_read_write(bagfile_uri, storage_id_);
+
+  if (!storage_) {
+    throw std::runtime_error("No storage could be initialized. Abort");
+  }
+
+  relative_file_paths_.push_back(bagfile_uri);
+
+  // Re-register all Topics since we rolled-over to a new bagfile.
+  for (const auto & topic : topics_) {
+    storage_->create_topic(topic.second.topic_metadata);
+  }
+}
+
 void Writer::write(std::shared_ptr<SerializedBagMessage> message)
 {
   if (!storage_) {
@@ -114,6 +140,10 @@ void Writer::write(std::shared_ptr<SerializedBagMessage> message)
   // Update the message count for the Topic.
   ++topics_[message->topic_name].message_count;
   ++message_count_;
+
+  if (should_split_bagfile()) {
+    split_bagfile_();
+  }
 
   start_time_ = std::min(start_time_, message->time_stamp);
   end_time_ = std::max(end_time_, message->time_stamp);
@@ -157,6 +187,21 @@ rosbag2_storage::BagMetadata Writer::generate_metadata_() const
   }
 
   return metadata;
+}
+
+std::string Writer::next_bagfile_uri_()
+{
+  std::stringstream db_name;
+  db_name << rosbag2_storage::FilesystemHelper::get_folder_name(uri_);
+
+  // Only append the counter after we have split.
+  if (bagfile_counter_ > 0) {
+    db_name << "_" << bagfile_counter_;
+  }
+
+  ++bagfile_counter_;
+
+  return rosbag2_storage::FilesystemHelper::concat({uri_, db_name.str()});
 }
 
 }  // namespace rosbag2

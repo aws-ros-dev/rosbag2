@@ -115,9 +115,14 @@ private:
   std::vector<std::string> relative_file_paths_;
   uint64_t message_count_;
   std::unordered_map<std::string, TopicInformation> topics_;
+  uint64_t bagfile_counter_;
   rcutils_time_point_value_t start_time_;
   rcutils_time_point_value_t end_time_;
+  std::string storage_id_;
+
   rosbag2_storage::BagMetadata generate_metadata_() const;
+  std::string next_bagfile_uri_();
+  void split_bagfile_();
 };
 
 }  // namespace rosbag2
