@@ -72,6 +72,7 @@ void Writer::open(
     throw std::runtime_error("No storage could be initialized. Abort");
   }
 
+  uri_ = storage_options.uri;
   start_time_ = std::chrono::nanoseconds::max().count();
   end_time_ = std::chrono::nanoseconds::min().count();
 }
