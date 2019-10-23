@@ -21,9 +21,12 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
-
+#include <chrono>
 #include "rosbag2/info.hpp"
 #include "rosbag2/storage_options.hpp"
+#include <thread>
+#include <chrono>
+#include "rosbag2/compressor.hpp"
 
 namespace rosbag2
 {
@@ -34,10 +37,9 @@ Writer::Writer(
   std::unique_ptr<rosbag2_storage::MetadataIo> metadata_io)
 : storage_factory_(std::move(storage_factory)),
   converter_factory_(std::move(converter_factory)),
-  storage_(nullptr),
   metadata_io_(std::move(metadata_io)),
   converter_(nullptr),
-  max_bagfile_size_(rosbag2_storage::storage_interfaces::MAX_BAGFILE_SIZE_NO_SPLIT),
+  max_bagfile_size_(rosbag2_storage::storage_interfaces::MAX_BAGFILE_SIZE_BYTES_NO_SPLIT),
   relative_file_paths_({}),
   message_count_(0),
   topics_({}),
@@ -45,7 +47,9 @@ Writer::Writer(
   start_time_(INT64_MAX),
   end_time_(INT64_MIN),
   storage_id_("")
-{}
+{
+  compressor_ = std::make_unique<Compressor>();
+}
 
 Writer::~Writer()
 {
@@ -115,6 +119,9 @@ void Writer::remove_topic(const TopicMetadata & topic_with_type)
 
 void Writer::split_bagfile_()
 {
+  // the current, active file
+  auto current_uri = storage_factory_->get_current_uri();
+  // the file which we will rollover to when splitting
   auto bagfile_uri = next_bagfile_uri_();
 
   storage_ = storage_factory_->open_read_write(bagfile_uri, storage_id_);
@@ -129,6 +136,15 @@ void Writer::split_bagfile_()
   for (const auto & topic : topics_) {
     storage_->create_topic(topic.second.topic_metadata);
   }
+
+  std::cout << "COMPRESSING" << std::endl;
+  auto start = std::chrono::high_resolution_clock::now();
+  compressor_->hi();
+
+  compressor_->compress_uri(current_uri);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+  std::cout << "Compression took " << duration.count() << " seconds" << std::endl;
 }
 
 void Writer::write(std::shared_ptr<SerializedBagMessage> message)
@@ -148,16 +164,22 @@ void Writer::write(std::shared_ptr<SerializedBagMessage> message)
   start_time_ = std::min(start_time_, message->time_stamp);
   end_time_ = std::max(end_time_, message->time_stamp);
 
+  // TODO compress a single message
+  // if we need to compress a single message, then compress here
+  // message has a shared pointer to serailzied data, compress that then pass)
+
   storage_->write(converter_ ? converter_->convert(message) : message);
 }
 
 bool Writer::should_split_bagfile() const
 {
-  if (max_bagfile_size_ == rosbag2_storage::storage_interfaces::MAX_BAGFILE_SIZE_NO_SPLIT) {
-    return false;
-  } else {
-    return storage_->get_bagfile_size() > max_bagfile_size_;
-  }
+//  if (max_bagfile_size_ == rosbag2_storage::storage_interfaces::MAX_BAGFILE_SIZE_NO_SPLIT) {
+//    return false;
+//  } else {
+//    return storage_->get_bagfile_size() > max_bagfile_size_;
+//  }
+
+  return bagfile_size > 1024 * 30; // todo hardcoded for PoC, command line split size (-b) was not in this branch
 }
 
 rosbag2_storage::BagMetadata Writer::generate_metadata_() const

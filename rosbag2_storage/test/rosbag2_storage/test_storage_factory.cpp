@@ -37,6 +37,15 @@ public:
   std::string test_unavailable_plugin_id = "my_unavailable_plugin";
 };
 
+TEST_F(StorageFactoryTest, test_get_current_uri) {
+  // test not set
+  ASSERT_EQ(std::string(""), factory.get_current_uri());
+  // test setting uri
+  auto read_write_storage = factory.open_read_write(
+    bag_file_path, test_plugin_id);
+  ASSERT_EQ(bag_file_path, factory.get_current_uri());
+}
+
 TEST_F(StorageFactoryTest, load_test_plugin) {
   // Load plugin for read and write
   auto read_write_storage = factory.open_read_write(
@@ -55,7 +64,6 @@ TEST_F(StorageFactoryTest, load_test_plugin) {
 TEST_F(StorageFactoryTest, loads_readonly_plugin_only_for_read_only_storage) {
   auto storage_for_reading = factory.open_read_only(
     bag_file_path, test_read_only_plugin_id);
-  ASSERT_NE(nullptr, storage_for_reading);
   storage_for_reading->read_next();
 
   auto storage_for_reading_and_writing = factory.open_read_write(
