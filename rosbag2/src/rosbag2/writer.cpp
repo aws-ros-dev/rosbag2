@@ -54,6 +54,7 @@ Writer::Writer(
 Writer::~Writer()
 {
   if (!uri_.empty() && storage_) {
+    // todo, check if any of the file io calls can fail
     auto metadata = generate_metadata_();
     auto dir_name = rosbag2_storage::FilesystemHelper::get_folder_name(uri_);
 
@@ -130,7 +131,6 @@ void Writer::split_bagfile_()
     throw std::runtime_error("No storage could be initialized. Abort");
   }
 
-  relative_file_paths_.push_back(bagfile_uri);
 
   // Re-register all Topics since we rolled-over to a new bagfile.
   for (const auto & topic : topics_) {
@@ -139,12 +139,17 @@ void Writer::split_bagfile_()
 
   std::cout << "COMPRESSING" << std::endl;
   auto start = std::chrono::high_resolution_clock::now();
-  compressor_->hi();
-
-  compressor_->compress_uri(current_uri);
+  auto compression_state = compressor_->compress_uri(current_uri);
   auto end = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
-  std::cout << "Compression took " << duration.count() << " seconds" << std::endl;
+
+  // todo wish there was an https://en.wikipedia.org/wiki/ISO_8601#Durations format
+  // https://github.com/HowardHinnant/date
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+  std::cout << "Compression took " << duration.count() << " milliseconds" << std::endl;
+
+  // todo what happens if compression fails for a single file?
+
+  relative_file_paths_.push_back(compression_state.compression_success ? compression_state.compressed_uri : bagfile_uri);
 }
 
 void Writer::write(std::shared_ptr<SerializedBagMessage> message)
@@ -170,7 +175,7 @@ void Writer::write(std::shared_ptr<SerializedBagMessage> message)
 
   storage_->write(converter_ ? converter_->convert(message) : message);
 }
-
+// TODO fixme
 bool Writer::should_split_bagfile() const
 {
 //  if (max_bagfile_size_ == rosbag2_storage::storage_interfaces::MAX_BAGFILE_SIZE_NO_SPLIT) {
@@ -179,7 +184,7 @@ bool Writer::should_split_bagfile() const
 //    return storage_->get_bagfile_size() > max_bagfile_size_;
 //  }
 
-  return bagfile_size > 1024 * 30; // todo hardcoded for PoC, command line split size (-b) was not in this branch
+  return storage_->get_bagfile_size() > 1024 * 100; // todo hardcoded for PoC, command line split size (-b) was not in this branch
 }
 
 rosbag2_storage::BagMetadata Writer::generate_metadata_() const
@@ -206,6 +211,9 @@ rosbag2_storage::BagMetadata Writer::generate_metadata_() const
     for (const auto & topic : topics_) {
       metadata.topics_with_message_count.push_back(topic.second);
     }
+
+    // todo mark if compression is inactive (sane, defined default - null / empty string?) vs provided via the CLI
+    metadata.compression_identifier = "SNAPPY";
   }
 
   return metadata;
