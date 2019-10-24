@@ -30,6 +30,7 @@
 #include "rosbag2/types.hpp"
 #include "rosbag2/visibility_control.hpp"
 #include "rosbag2/compressor.hpp"
+#include "rosbag2/compression_options.hpp"
 
 // This is necessary because of using stl types here. It is completely safe, because
 // a) the member is not accessible from the outside
@@ -113,6 +114,7 @@ private:
   std::unique_ptr<rosbag2_storage::MetadataIo> metadata_io_;
   std::unique_ptr<Converter> converter_;
   std::unique_ptr<Compressor> compressor_;
+  CompressionOptions compression_options_;
   uint64_t max_bagfile_size_;
   std::vector<std::string> relative_file_paths_;
   uint64_t message_count_;
@@ -121,7 +123,6 @@ private:
   rcutils_time_point_value_t start_time_;
   rcutils_time_point_value_t end_time_;
   std::string storage_id_;
-
   rosbag2_storage::BagMetadata generate_metadata_() const;
   std::string next_bagfile_uri_();
   void split_bagfile_();
