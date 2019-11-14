@@ -24,8 +24,9 @@
 #include "rosbag2_storage/storage_factory_interface.hpp"
 #include "rosbag2_storage/storage_interfaces/read_only_interface.hpp"
 
-#include "rosbag2/reader_interfaces/base_reader_interface.hpp"
+#include "rosbag2/converter_options.hpp"
 #include "rosbag2/serialization_format_converter_factory.hpp"
+#include "rosbag2/storage_options.hpp"
 #include "rosbag2/types.hpp"
 #include "rosbag2/visibility_control.hpp"
 
@@ -39,8 +40,10 @@
 
 namespace rosbag2
 {
-
+namespace reader_interfaces
+{
 class BaseReaderInterface;
+}  // namespace reader_interfaces
 
 /**
  * The Reader allows opening and reading messages of a bag.
@@ -48,14 +51,14 @@ class BaseReaderInterface;
 class ROSBAG2_PUBLIC Reader final
 {
 public:
-  Reader(std::unique_ptr<BaseReaderInterface> reader_impl);
+  explicit Reader(std::unique_ptr<reader_interfaces::BaseReaderInterface> reader_impl);
 
   ~Reader();
 
   /**
-   * Throws if file could not be
-   * opened. This must be called before any other function is used. The rosbag is
-   * automatically closed on destruction.
+   * Throws if file could not be opened.
+   * This must be called before any other function is used.
+   * The rosbag is automatically closed on destruction.
    *
    * If the `output_serialization_format` within the `converter_options` is not the same as the
    * format of the underlying stored data, a converter will be used to automatically convert the
@@ -97,7 +100,7 @@ public:
   std::vector<TopicMetadata> get_all_topics_and_types();
 
 private:
-  std::unique_ptr<BaseReaderInterface> reader_impl_;
+  std::unique_ptr<reader_interfaces::BaseReaderInterface> reader_impl_;
 };
 
 }  // namespace rosbag2

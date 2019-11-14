@@ -34,7 +34,7 @@ namespace rosbag2
 namespace readers
 {
 
-class ROSBAG2_PUBLIC SequentialReader : public BaseReaderInterface
+class ROSBAG2_PUBLIC SequentialReader : public ::rosbag2::reader_interfaces::BaseReaderInterface
 {
 public:
   SequentialReader(

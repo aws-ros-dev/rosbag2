@@ -22,7 +22,7 @@
 
 #include "rosbag2/reader_interfaces/base_reader_interface.hpp"
 
-class MockSequentialReader : public rosbag2::BaseReaderInterface
+class MockSequentialReader : public rosbag2::reader_interfaces::BaseReaderInterface
 {
 public:
   void open(

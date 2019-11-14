@@ -18,12 +18,13 @@
 #include <vector>
 
 #include "rosbag2/info.hpp"
+#include "rosbag2/reader_interfaces/base_reader_interface.hpp"
 #include "rosbag2/reader.hpp"
 
 namespace rosbag2
 {
 
-Reader::Reader(std::unique_ptr<BaseReaderInterface> reader_impl)
+Reader::Reader(std::unique_ptr<reader_interfaces::BaseReaderInterface> reader_impl)
 : reader_impl_(std::move(reader_impl))
 {}
 
