@@ -1,4 +1,4 @@
-name: Test rosbag2
+name: End to End tests
 
 on:
   pull_request:
@@ -19,6 +19,6 @@ jobs:
       - uses: ros-tooling/setup-ros2@master
       - uses: ros-tooling/action-ros2-ci@master
         with:
-          package-name: rosbag2
+          package-name: rosbag2_tests
 
 
