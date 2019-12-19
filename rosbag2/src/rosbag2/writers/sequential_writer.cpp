@@ -21,6 +21,8 @@
 #include <string>
 #include <utility>
 
+#include "rosbag2_compression/zstd_compressor.hpp"
+
 #include "rosbag2/info.hpp"
 #include "rosbag2/storage_options.hpp"
 #include "rosbag2_storage/filesystem_helper.hpp"
@@ -56,7 +58,8 @@ SequentialWriter::SequentialWriter(
   converter_(nullptr),
   max_bagfile_size_(rosbag2_storage::storage_interfaces::MAX_BAGFILE_SIZE_NO_SPLIT),
   topics_names_to_info_(),
-  metadata_()
+  metadata_(),
+  compression_mode_{CompressionMode::NONE}
 {}
 
 SequentialWriter::~SequentialWriter()
@@ -71,12 +74,15 @@ void SequentialWriter::init_metadata()
   metadata_.starting_time = std::chrono::time_point<std::chrono::high_resolution_clock>(
     std::chrono::nanoseconds::max());
   metadata_.relative_file_paths = {storage_->get_relative_file_path()};
+  metadata_.compression_mode = compression_mode_to_string(compression_mode_);
 }
 
 void SequentialWriter::open(
   const StorageOptions & storage_options,
-  const ConverterOptions & converter_options)
+  const ConverterOptions & converter_options,
+  const CompressionOptions & compression_options)
 {
+  compression_mode_ = compression_options.compression_mode;
   max_bagfile_size_ = storage_options.max_bagfile_size;
   base_folder_ = storage_options.uri;
 
@@ -84,6 +90,11 @@ void SequentialWriter::open(
     converter_options.input_serialization_format)
   {
     converter_ = std::make_unique<Converter>(converter_options, converter_factory_);
+  }
+
+  // TODO(zmichaels11): replace this with a "compressor_factory" that can select ZstdCompressor.
+  if (compression_options.compression_format == "zstd") {
+    compressor_ = std::make_unique<rosbag2_compression::ZstdCompressor>();
   }
 
   const auto storage_uri = format_storage_uri(base_folder_, 0);
@@ -103,6 +114,17 @@ void SequentialWriter::reset()
     metadata_io_->write_metadata(base_folder_, metadata_);
   }
 
+  if (compressor_ && compression_mode_ == CompressionMode::FILE) {
+    // Get the uri of the last rosbag segment and pop it off
+    const auto uncompressed_uri = metadata_.relative_file_paths.back();
+    metadata_.relative_file_paths.pop_back();
+
+    // Compress the uri of the last rosbag segment and push it on
+    const auto compressed_uri = compressor_->compress_uri(uncompressed_uri);
+    metadata_.relative_file_paths.push_back(compressed_uri);
+  }
+
+  compressor_.reset();
   storage_.reset();  // Necessary to ensure that the storage is destroyed before the factory
   storage_factory_.reset();
 }
@@ -159,6 +181,9 @@ void SequentialWriter::split_bagfile()
   const auto storage_uri = format_storage_uri(
     base_folder_,
     metadata_.relative_file_paths.size());
+
+  const auto old_storage_uri = storage_->get_relative_file_path();
+
   storage_ = storage_factory_->open_read_write(storage_uri, metadata_.storage_identifier);
 
   if (!storage_) {
@@ -168,6 +193,17 @@ void SequentialWriter::split_bagfile()
     throw std::runtime_error(errmsg.str());
   }
 
+  if (compressor_ && compression_mode_ == CompressionMode::FILE) {
+    // Get the uri of the last rosbag segment and pop the uri
+    const auto uncompressed_uri = metadata_.relative_file_paths.back();
+    metadata_.relative_file_paths.pop_back();
+
+    // Compress the last rosbag and push the new uri
+    const auto compressed_uri = compressor_->compress_uri(uncompressed_uri);
+    metadata_.relative_file_paths.push_back(compressed_uri);
+  }
+
+  // Push the uri for the new rosbag segment
   metadata_.relative_file_paths.push_back(storage_->get_relative_file_path());
 
   // Re-register all topics since we rolled-over to a new bagfile.
@@ -196,6 +232,12 @@ void SequentialWriter::write(std::shared_ptr<SerializedBagMessage> message)
   const auto duration = message_timestamp - metadata_.starting_time;
   metadata_.duration = std::max(metadata_.duration, duration);
 
+  if (compressor_ && compression_mode_ == CompressionMode::MESSAGE) {
+    auto converted_message = converter_ ? converter_->convert(message) : message;
+
+    compressor_->compress_serialized_bag_message(converted_message.get());
+  }
+
   storage_->write(converter_ ? converter_->convert(message) : message);
 }
 
@@ -210,6 +252,10 @@ bool SequentialWriter::should_split_bagfile() const
 
 void SequentialWriter::finalize_metadata()
 {
+  if (compressor_) {
+    metadata_.compression_format = compressor_->get_compression_identifier();
+  }
+
   metadata_.bag_size = 0;
 
   for (const auto & path : metadata_.relative_file_paths) {

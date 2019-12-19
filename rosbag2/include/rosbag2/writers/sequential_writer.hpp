@@ -20,6 +20,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "rosbag2_compression/base_compressor_interface.hpp"
+
 #include "rosbag2_storage/metadata_io.hpp"
 #include "rosbag2_storage/storage_factory.hpp"
 #include "rosbag2_storage/storage_factory_interface.hpp"
@@ -71,7 +73,9 @@ public:
    * \param converter_options options to define in which format incoming messages are stored
    **/
   void open(
-    const StorageOptions & storage_options, const ConverterOptions & converter_options) override;
+    const StorageOptions & storage_options,
+    const ConverterOptions & converter_options,
+    const CompressionOptions & compression_options) override;
 
   void reset() override;
 
@@ -109,6 +113,7 @@ private:
   std::shared_ptr<rosbag2_storage::storage_interfaces::ReadWriteInterface> storage_;
   std::unique_ptr<rosbag2_storage::MetadataIo> metadata_io_;
   std::unique_ptr<Converter> converter_;
+  std::unique_ptr<rosbag2_compression::BaseCompressorInterface> compressor_;
 
   // Used in bagfile splitting; specifies the best-effort maximum sub-section of a bagfile in bytes.
   uint64_t max_bagfile_size_;
@@ -117,6 +122,9 @@ private:
   std::unordered_map<std::string, TopicInformation> topics_names_to_info_;
 
   rosbag2_storage::BagMetadata metadata_;
+
+  // Used in invoking compression
+  rosbag2::CompressionMode compression_mode_;
 
   // Closes the current backed storage and opens the next bagfile.
   void split_bagfile();

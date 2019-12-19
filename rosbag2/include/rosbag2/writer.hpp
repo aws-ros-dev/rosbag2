@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "rosbag2/compression_options.hpp"
 #include "rosbag2/converter_options.hpp"
 #include "rosbag2/storage_options.hpp"
 #include "rosbag2/types.hpp"
@@ -59,6 +60,19 @@ public:
    * \param converter_options options to define in which format incoming messages are stored
    **/
   void open(const StorageOptions & storage_options, const ConverterOptions & converter_options);
+
+  /**
+   * Opens a new bagfile and prepares it for writing messages. The bagfile must not exist.
+   * This must be called before any other function is used.
+   *
+   * @param storage_options Options to configure the storage.
+   * @param converter_options Options to define in which format incoming messages are stored.
+   * @param compression_options Options to configure message or bagfile compression.
+   */
+  void open(
+    const StorageOptions & storage_options,
+    const ConverterOptions & converter_options,
+    const CompressionOptions & compression_options);
 
   /**
    * Create a new topic in the underlying storage. Needs to be called for every topic used within

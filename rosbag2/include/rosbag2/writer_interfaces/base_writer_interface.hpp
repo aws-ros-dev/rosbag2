@@ -17,6 +17,8 @@
 
 #include <memory>
 
+#include "rosbag2/compression_options.hpp"
+
 #include "rosbag2_storage/serialized_bag_message.hpp"
 #include "rosbag2_storage/topic_metadata.hpp"
 
@@ -33,7 +35,9 @@ public:
   virtual ~BaseWriterInterface() {}
 
   virtual void open(
-    const StorageOptions & storage_options, const ConverterOptions & converter_options) = 0;
+    const StorageOptions & storage_options,
+    const ConverterOptions & converter_options,
+    const CompressionOptions & compression_options) = 0;
 
   virtual void reset() = 0;
 

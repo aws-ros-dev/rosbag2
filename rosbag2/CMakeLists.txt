@@ -41,6 +41,7 @@ find_package(rosidl_typesupport_cpp REQUIRED)
 find_package(rosidl_typesupport_introspection_cpp REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
+  src/rosbag2/compression_options.cpp
   src/rosbag2/converter.cpp
   src/rosbag2/info.cpp
   src/rosbag2/reader.cpp
