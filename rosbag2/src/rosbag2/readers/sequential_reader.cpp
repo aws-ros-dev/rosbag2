@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "rcpputils/filesystem_helper.hpp"
+#include "rosbag2_compression/zstd_decompressor.hpp"
 
 #include "rosbag2/logging.hpp"
 #include "rosbag2/readers/sequential_reader.hpp"
@@ -49,7 +50,8 @@ void SequentialReader::reset()
 }
 
 void SequentialReader::open(
-  const StorageOptions & storage_options, const ConverterOptions & converter_options)
+  const StorageOptions & storage_options,
+  const ConverterOptions & converter_options)
 {
   // If there is a metadata.yaml file present, load it.
   // If not, let's ask the storage with the given URI for its metadata.
@@ -68,6 +70,11 @@ void SequentialReader::open(
       *current_file_iterator_, metadata_.storage_identifier);
     if (!storage_) {
       throw std::runtime_error("No storage could be initialized. Abort");
+    }
+    compression_mode_ = compression_mode_from_string(metadata_.compression_mode);
+    // TODO(piraka9011): replace this with a "compressor_factory" that can select ZstdDecompressor.
+    if (metadata_.compression_format == "zstd") {
+      decompressor_ = std::make_unique<rosbag2_compression::ZstdDecompressor>();
     }
   } else {
     storage_ = storage_factory_->open_read_only(
@@ -116,6 +123,9 @@ std::shared_ptr<SerializedBagMessage> SequentialReader::read_next()
 {
   if (storage_) {
     auto message = storage_->read_next();
+    if (compression_mode_ == CompressionMode::MESSAGE) {
+      decompressor_->decompress_serialized_bag_message(message.get());
+    }
     return converter_ ? converter_->convert(message) : message;
   }
   throw std::runtime_error("Bag is not open. Call open() before reading.");
@@ -138,6 +148,10 @@ void SequentialReader::load_next_file()
 {
   assert(current_file_iterator_ != file_paths_.end());
   current_file_iterator_++;
+  if (compression_mode_ == CompressionMode::FILE) {
+    *current_file_iterator_ = decompressor_->decompress_uri(*current_file_iterator_);
+  }
+
 }
 
 std::string SequentialReader::get_current_file() const

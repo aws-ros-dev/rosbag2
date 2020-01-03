@@ -21,6 +21,7 @@
 #include "rosbag2_storage/serialized_bag_message.hpp"
 #include "rosbag2_storage/topic_metadata.hpp"
 
+#include "rosbag2/compression_options.hpp"
 #include "rosbag2/converter_options.hpp"
 #include "rosbag2/storage_options.hpp"
 #include "rosbag2/visibility_control.hpp"
@@ -36,7 +37,8 @@ public:
   virtual ~BaseReaderInterface() {}
 
   virtual void open(
-    const StorageOptions & storage_options, const ConverterOptions & converter_options) = 0;
+    const StorageOptions & storage_options,
+    const ConverterOptions & converter_options) = 0;
 
   virtual void reset() = 0;
 

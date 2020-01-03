@@ -19,11 +19,13 @@
 #include <string>
 #include <vector>
 
+#include "rosbag2_compression/base_decompressor_interface.hpp"
 #include "rosbag2_storage/metadata_io.hpp"
 #include "rosbag2_storage/storage_factory.hpp"
 #include "rosbag2_storage/storage_factory_interface.hpp"
 #include "rosbag2_storage/storage_interfaces/read_only_interface.hpp"
 
+#include "rosbag2/compression_options.hpp"
 #include "rosbag2/converter.hpp"
 #include "rosbag2/reader_interfaces/base_reader_interface.hpp"
 #include "rosbag2/serialization_format_converter_factory.hpp"
@@ -57,7 +59,8 @@ public:
   virtual ~SequentialReader();
 
   void open(
-    const StorageOptions & storage_options, const ConverterOptions & converter_options) override;
+    const StorageOptions & storage_options,
+    const ConverterOptions & converter_options) override;
 
   void reset() override;
 
@@ -124,9 +127,12 @@ private:
   std::shared_ptr<rosbag2_storage::storage_interfaces::ReadOnlyInterface> storage_{};
   std::unique_ptr<Converter> converter_{};
   std::unique_ptr<rosbag2_storage::MetadataIo> metadata_io_{};
+  std::unique_ptr<rosbag2_compression::BaseDecompressorInterface> decompressor_;
   rosbag2_storage::BagMetadata metadata_{};
   std::vector<std::string> file_paths_{};  // List of database files.
   std::vector<std::string>::iterator current_file_iterator_{};  // Index of file to read from
+  // Used in invoking compression
+  rosbag2::CompressionMode compression_mode_;
 };
 
 }  // namespace readers

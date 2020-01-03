@@ -32,9 +32,9 @@ Reader::~Reader()
 {
   reader_impl_->reset();
 }
-
 void Reader::open(
-  const StorageOptions & storage_options, const ConverterOptions & converter_options)
+  const StorageOptions & storage_options,
+  const ConverterOptions & converter_options)
 {
   reader_impl_->open(storage_options, converter_options);
 }

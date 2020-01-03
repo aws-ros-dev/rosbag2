@@ -1,0 +1,8 @@
+//
+// Created by allabana on 1/2/20.
+//
+
+#ifndef ROSBAG2_COMPRESSION_OPTIONS_HPP
+#define ROSBAG2_COMPRESSION_OPTIONS_HPP
+
+#endif //ROSBAG2_COMPRESSION_OPTIONS_HPP

@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "rosbag2/compression_options.hpp"
 #include "rosbag2/converter_options.hpp"
 #include "rosbag2/storage_options.hpp"
 #include "rosbag2/types.hpp"
@@ -63,8 +64,7 @@ public:
    * \param storage_options Options to configure the storage
    * \param converter_options Options for specifying the output data format
    */
-  void open(
-    const StorageOptions & storage_options, const ConverterOptions & converter_options);
+  void open(const StorageOptions & storage_options, const ConverterOptions & converter_options);
 
   /**
    * Ask whether the underlying bagfile contains at least one more message.
