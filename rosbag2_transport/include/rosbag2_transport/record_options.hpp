@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+#include "rosbag2/compression_options.hpp"
+
 namespace rosbag2_transport
 {
 struct RecordOptions
@@ -29,6 +31,8 @@ public:
   std::vector<std::string> topics;
   std::string rmw_serialization_format;
   std::chrono::milliseconds topic_polling_interval;
+  rosbag2::CompressionMode compression_mode = rosbag2::CompressionMode::NONE;
+  std::string compression_format = "";
   std::string node_prefix = "";
 };
 

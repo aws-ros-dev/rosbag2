@@ -45,13 +45,14 @@ public:
     rclcpp::init(0, nullptr);
   }
 
-  void start_recording(const RecordOptions & options)
+  void start_recording(
+    const RecordOptions & record_options)
   {
     // the future object returned from std::async needs to be stored not to block the execution
     future_ = std::async(
-      std::launch::async, [this, options]() {
+      std::launch::async, [this, record_options]() {
         rosbag2_transport::Rosbag2Transport rosbag2_transport(reader_, writer_, info_);
-        rosbag2_transport.record(storage_options_, options);
+        rosbag2_transport.record(storage_options_, record_options);
       });
   }
 

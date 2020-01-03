@@ -65,7 +65,9 @@ public:
    * \param record_options Options regarding the recording (e.g. the topics to record)
    */
   ROSBAG2_TRANSPORT_PUBLIC
-  void record(const StorageOptions & storage_options, const RecordOptions & record_options);
+  void record(
+    const StorageOptions & storage_options,
+    const RecordOptions & record_options);
 
   /**
    * Replay all topics in a bagfile.

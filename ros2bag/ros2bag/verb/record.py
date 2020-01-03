@@ -55,6 +55,10 @@ class RecordVerb(VerbExtension):
                   'Default it is zero, recording written in single bagfile and splitting '
                   'is disabled.'
         )
+        parser.add_argument(
+            '-c', '--compression-mode', type=str, default='NONE', choices=['NONE', 'FILE', 'MESSAGE'],
+            help='Determine whether to compress by file or message. Default is "NONE".'
+        )
         self._subparser = parser
 
     def create_bag_directory(self, uri):
@@ -87,6 +91,7 @@ class RecordVerb(VerbExtension):
                 storage_id=args.storage,
                 serialization_format=args.serialization_format,
                 node_prefix=NODE_NAME_PREFIX,
+                compression_mode=args.compression_mode,
                 all=True,
                 no_discovery=args.no_discovery,
                 polling_interval=args.polling_interval,
@@ -104,6 +109,7 @@ class RecordVerb(VerbExtension):
                 storage_id=args.storage,
                 serialization_format=args.serialization_format,
                 node_prefix=NODE_NAME_PREFIX,
+                compression_mode=args.compression_mode,
                 no_discovery=args.no_discovery,
                 polling_interval=args.polling_interval,
                 max_bagfile_size=args.max_bag_size,
