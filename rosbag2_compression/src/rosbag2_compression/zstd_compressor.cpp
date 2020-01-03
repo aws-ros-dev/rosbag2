@@ -114,14 +114,14 @@ void print_compression_statistics(
   std::chrono::high_resolution_clock::time_point end,
   size_t decompressed_size, size_t compressed_size)
 {
-  const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
   const auto compression_ratio =
-    static_cast<double>(decompressed_size) / static_cast<double>(compressed_size);
+    static_cast<double>(compressed_size) / static_cast<double>(decompressed_size);
   ROSBAG2_COMPRESSION_LOG_DEBUG_STREAM(
-    "Compression statistics:\n" <<
-      "Time: " << duration.count() << " microseconds" <<
-      "Compression Ratio: " << compression_ratio
-  );
+    "\"Compression statistics\" : {" <<
+      "\"Time\" : " << (duration.count() / 1000.0) <<
+      ", \"Compression Ratio\" : " << compression_ratio <<
+      "}");
 }
 }  // namespace
 

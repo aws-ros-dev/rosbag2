@@ -144,14 +144,15 @@ void print_decompression_statistics(
   const size_t decompressed_size,
   const size_t compressed_size)
 {
-  const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
   const auto decompression_ratio =
     static_cast<double>(decompressed_size) / static_cast<double>(compressed_size);
 
   ROSBAG2_COMPRESSION_LOG_DEBUG_STREAM(
-    "Decompression statistics:\n" <<
-      "Time: " << duration.count() << " microseconds" <<
-      "Compression Ratio: " << decompression_ratio);
+    "\"Decompression statistics\" : {" <<
+      "\"Time\" : " << (duration.count() / 1000.0) <<
+      ", \"Decompression Ratio\" : " << decompression_ratio <<
+      "}");
 }
 }  // namespace
 
