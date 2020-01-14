@@ -23,10 +23,24 @@ if(NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
 endif()
 
 find_package(ament_cmake REQUIRED)
+find_package(pluginlib REQUIRED)
 find_package(rcpputils REQUIRED)
 find_package(rcutils REQUIRED)
 find_package(rosbag2_storage REQUIRED)
 find_package(zstd_vendor REQUIRED)
+
+add_library(${PROJECT_NAME}
+  SHARED
+  src/rosbag2_compression/compression_factory.cpp)
+target_include_directories(rosbag2_compression PUBLIC include)
+ament_target_dependencies(${PROJECT_NAME}
+  pluginlib
+  rcpputils
+  rcutils
+  rosbag2_storage
+  zstd_vendor)
+target_compile_definitions(${PROJECT_NAME} PRIVATE "ROSBAG2_COMPRESSION_BUILDING_DLL")
+target_compile_definitions(${PROJECT_NAME} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
 
 add_library(${PROJECT_NAME}_zstd
   SHARED
@@ -53,14 +67,14 @@ install(
   DESTINATION include)
 
 install(
-  TARGETS ${PROJECT_NAME}_zstd
+  TARGETS ${PROJECT_NAME}_zstd ${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
 ament_export_include_directories(include)
-ament_export_libraries(${PROJECT_NAME}_zstd)
-ament_export_dependencies(rosbag2_storage rcutils zstd_vendor)
+ament_export_libraries(${PROJECT_NAME}_zstd ${PROJECT_NAME})
+ament_export_dependencies(rosbag2_storage pluginlib rcutils zstd_vendor)
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gmock REQUIRED)
@@ -104,4 +118,5 @@ if(BUILD_TESTING)
   ament_target_dependencies(test_zstd_compressor rosbag2_test_common rosbag2_storage)
 endif()
 
-ament_package()
+ament_package(
+  CONFIG_EXTRAS cmake/rosbag2_compression_register_compression_plugin.cmake)
