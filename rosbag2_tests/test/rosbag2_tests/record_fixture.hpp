@@ -45,11 +45,24 @@ class RecordFixture : public TemporaryDirectoryFixture
 public:
   RecordFixture()
   {
-    root_bag_path_ = (rcpputils::fs::path(temporary_dir_path_) / "bag").string();
-    storage_path_ = (rcpputils::fs::path(root_bag_path_) / "bag_0").string();
-    database_path_ = storage_path_ + ".db3";
-    std::cout << "Database " << database_path_ << " in " << temporary_dir_path_ << std::endl;
+    set_path("bag");
   }
+
+  void set_path(const std::string & bagname)
+  {
+    auto root_path = rcpputils::fs::path{temporary_dir_path_} / bagname;
+
+    if (root_path.exists()) {
+      remove_directory_recursively(root_path.string());
+    }
+
+    const std::string first_bagfile = bagname + "_0";
+
+    root_bag_path_ = root_path.string();
+    storage_path_ = (root_path / first_bagfile).string();
+    database_path_ = storage_path_ + ".db3";
+  }
+
 
   void SetUp() override
   {
@@ -67,6 +80,17 @@ public:
   static void TearDownTestCase()
   {
     rclcpp::shutdown();
+  }
+
+  void wait_for_metadata()
+  {
+    const auto metadata_path = rcpputils::fs::path{root_bag_path_} / "metadata.yaml";
+    while (true) {
+      if (metadata_path.exists()) {
+        return;
+      }
+      std::this_thread::sleep_for(50ms);
+    }
   }
 
   void wait_for_db()

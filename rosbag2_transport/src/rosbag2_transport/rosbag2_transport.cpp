@@ -71,11 +71,13 @@ void Rosbag2Transport::record(
   try {
     writer_->open(
       storage_options, {rmw_get_serialization_format(), record_options.rmw_serialization_format});
-
+    std::cout << "open" << std::endl; 
     auto transport_node = setup_node(record_options.node_prefix);
-
+    std::cout << "transport_node" << std::endl;
     Recorder recorder(writer_, transport_node);
+    std::cout << "recorder init" << std::endl;
     recorder.record(record_options);
+    std::cout << "record" << std::endl;
   } catch (std::runtime_error & e) {
     ROSBAG2_TRANSPORT_LOG_ERROR("Failed to record: %s", e.what());
   }

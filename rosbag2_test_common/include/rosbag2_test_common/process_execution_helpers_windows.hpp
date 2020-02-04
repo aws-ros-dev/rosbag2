@@ -110,8 +110,41 @@ void stop_execution(const ProcessHandle & handle)
   GetExitCodeProcess(handle.process_info.hProcess, &exit_code);
   // 259 indicates that the process is still active: we want to make sure that the process is
   // still running properly before killing it.
-  ASSERT_THAT(exit_code, Eq(259));
-  GenerateConsoleCtrlEvent(CTRL_C_EVENT, handle.process_info.dwThreadId);
+  EXPECT_THAT(exit_code, Eq(259)) << "Got exit code: " << exit_code << std::endl;
+  //std::cout << "exit_code " << exit_code << std::endl;
+  DWORD thisConsoleId = GetCurrentProcessId();
+  bool consoleDetached = (FreeConsole() != FALSE);
+
+  if (AttachConsole(handle.process_info.dwProcessId)) {
+    std::cout << "Attached process to console" << std::endl;
+    SetConsoleCtrlHandler(NULL, true);  // Disable Ctrl-C handling for our program
+    // SIGINT
+    if (GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0)) {
+      std::cout << "Ctrl-c sent to process" << std::endl;
+    }
+    else {
+      std::cout << "Could not send ctrl-c (" << GetLastError() << ")" << std::endl;
+    }
+    FreeConsole();
+  }
+  else {
+    std::cout << "Unable to attach process to console (" << GetLastError() << ")" << std::endl;
+  }
+
+  if (consoleDetached)
+  {
+    // Create a new console if previous was deleted by OS
+    if (AttachConsole(thisConsoleId))
+    {
+      int errorCode = GetLastError();
+      // 31=ERROR_GEN_FAILURE
+      if (errorCode == 31) {
+        std::cout << "allocconsole" << std::endl;
+        AllocConsole();
+      }
+    }
+  }
+  
   close_process_handles(handle.process_info);
   CloseHandle(handle.job_handle);
 }

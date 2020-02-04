@@ -64,6 +64,29 @@ SequentialCompressionWriter::SequentialCompressionWriter(
   metadata_io_{std::move(metadata_io)},
   compression_options_{compression_options} {}
 
+//#ifdef _WIN32
+//void SequentialCompressionWriter::message_thread()
+//{
+//  std::cout << "Starting message thread" << std::endl;
+//  MSG * msg = new MSG;
+//  PeekMessage(msg, NULL, WM_USER, WM_USER, PM_NOREMOVE);
+//  while (PeekMessage(msg, NULL, 0, 0, PM_REMOVE))
+//  {
+//    switch (msg->message)
+//    {
+//    case WM_QUIT:
+//      std::cout << "Quit signal received" << std::endl;
+//      reset();
+//      break;
+//    case WM_CLOSE:
+//      std::cout << "Close signal received" << std::endl;
+//      reset();
+//      break;
+//    }
+//  }
+//  delete msg;
+//}
+//#endif
 SequentialCompressionWriter::~SequentialCompressionWriter()
 {
   reset();
@@ -102,6 +125,9 @@ void SequentialCompressionWriter::open(
   const rosbag2_cpp::StorageOptions & storage_options,
   const rosbag2_cpp::ConverterOptions & converter_options)
 {
+//#ifdef _WIN32
+//  std::thread first_([this] {message_thread();});
+//#endif
   max_bagfile_size_ = storage_options.max_bagfile_size;
   base_folder_ = storage_options.uri;
 
@@ -125,11 +151,13 @@ void SequentialCompressionWriter::open(
   }
 
   setup_compression();
+  ROSBAG2_COMPRESSION_LOG_INFO_STREAM("Using " << compressor_->get_compression_identifier() << " compression");
   init_metadata();
 }
 
 void SequentialCompressionWriter::reset()
 {
+  ROSBAG2_COMPRESSION_LOG_INFO("Reset Called");
   if (!base_folder_.empty()) {
     if (!compressor_) {
       throw std::runtime_error{"Compressor was not opened!"};
@@ -141,7 +169,6 @@ void SequentialCompressionWriter::reset()
       should_compress_last_file_)
     {
       try {
-        storage_.reset();  // Storage must be closed before it can be compressed.
         compress_last_file();
       } catch (const std::runtime_error & e) {
         ROSBAG2_COMPRESSION_LOG_WARN_STREAM("Could not compress the last bag file.\n" << e.what());
@@ -203,6 +230,9 @@ void SequentialCompressionWriter::remove_topic(
 
 void SequentialCompressionWriter::compress_last_file()
 {
+  ROSBAG2_COMPRESSION_LOG_INFO("Compressing last file");
+  std::cout << "compressing last file" << std::endl;
+  storage_.reset();  // Storage must be closed before it can be compressed.
   if (!compressor_) {
     throw std::runtime_error{"Compressor was not opened!"};
   }
@@ -216,16 +246,16 @@ void SequentialCompressionWriter::compress_last_file()
 
     metadata_.relative_file_paths.back() = compressed_uri;
 
-    ROSBAG2_COMPRESSION_LOG_DEBUG_STREAM("Compressed \"" << to_compress << "\" to \"" <<
+    ROSBAG2_COMPRESSION_LOG_INFO_STREAM("Compressed \"" << to_compress << "\" to \"" <<
       compressed_uri << "\"");
 
     const auto rc = std::remove(to_compress.c_str());
     if (rc != 0) {
-      ROSBAG2_COMPRESSION_LOG_DEBUG_STREAM("Failed to remove uncompressed bag: \"" <<
+      ROSBAG2_COMPRESSION_LOG_INFO_STREAM("Failed to remove uncompressed bag: \"" <<
         to_compress << "\"");
     }
   } else {
-    ROSBAG2_COMPRESSION_LOG_DEBUG_STREAM("Last file \"" << to_compress <<
+    ROSBAG2_COMPRESSION_LOG_INFO_STREAM("Last file \"" << to_compress <<
       "\" is empty; removing...");
     metadata_.relative_file_paths.pop_back();
   }
@@ -233,6 +263,8 @@ void SequentialCompressionWriter::compress_last_file()
 
 void SequentialCompressionWriter::split_bagfile()
 {
+  ROSBAG2_COMPRESSION_LOG_INFO("Splitting bag file");
+  std::cout << "Splitting bag file" << std::endl;
   if (compression_options_.compression_mode == rosbag2_compression::CompressionMode::FILE) {
     compress_last_file();
   }

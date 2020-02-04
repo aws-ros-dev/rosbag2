@@ -407,11 +407,12 @@ TEST_F(RecordFixture, record_end_to_end_with_splitting_splits_bagfile) {
   const auto metadata = metadata_io.read_metadata(root_bag_path_);
 
   for (const auto & path : metadata.relative_file_paths) {
-    EXPECT_TRUE(rcpputils::fs::exists(path));
+    ASSERT_TRUE(rcpputils::fs::exists(path));
   }
 }
 
 TEST_F(RecordFixture, record_end_to_end_test_with_zstd_file_compression_compresses_files) {
+  set_path("zstd_test");
   constexpr const char topic_name[] = "/test_topic";
   constexpr const int bagfile_split_size = 4 * 1024 * 1024;  // 4MB.
 
@@ -442,7 +443,6 @@ TEST_F(RecordFixture, record_end_to_end_test_with_zstd_file_compression_compress
   }
 
   stop_execution(process_handle);
-
   rosbag2_storage::MetadataIo metadata_io;
 
   // TODO(zmichaels11): Remove when stop_execution properly SIGINT on Windows.
@@ -458,7 +458,7 @@ TEST_F(RecordFixture, record_end_to_end_test_with_zstd_file_compression_compress
 
     for (int i = 0; i < expected_splits; ++i) {
       std::stringstream bag_name;
-      bag_name << "bag_" << i << ".db3.zstd";
+      bag_name << "zstd_test_" << i << ".db3.zstd";
 
       const auto bag_path = rcpputils::fs::path(root_bag_path_) / bag_name.str();
 
@@ -470,8 +470,11 @@ TEST_F(RecordFixture, record_end_to_end_test_with_zstd_file_compression_compress
       }
     }
 
-    ASSERT_GE(metadata.relative_file_paths.size(), 1) << "Bagfile never split!";
     metadata_io.write_metadata(root_bag_path_, metadata);
+    wait_for_metadata();
+    // std::cout << "wait_for_metadata" << std::endl;
+    // std::this_thread::sleep_for(10s);
+    ASSERT_GE(metadata.relative_file_paths.size(), 1) << "Bagfile never split!";
   }
   #endif
 

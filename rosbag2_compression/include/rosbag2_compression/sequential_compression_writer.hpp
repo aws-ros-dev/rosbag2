@@ -40,6 +40,9 @@
 #ifdef _WIN32
 # pragma warning(push)
 # pragma warning(disable:4251)
+#include <windows.h> 
+#include <stdio.h> 
+#include <thread> 
 #endif
 
 namespace rosbag2_compression
@@ -156,6 +159,11 @@ private:
 
   // Record TopicInformation into metadata
   void finalize_metadata();
+
+//#ifdef _WIN32
+//  void message_thread();
+//  std::thread first_;
+//#endif
 };
 }  // namespace rosbag2_compression
 #endif  // ROSBAG2_COMPRESSION__SEQUENTIAL_COMPRESSION_WRITER_HPP_
