@@ -27,6 +27,7 @@ find_package(ament_index_cpp REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gmock REQUIRED)
+  find_package(ament_cmake_pytest REQUIRED)
   find_package(ament_lint_auto REQUIRED)
   find_package(rclcpp REQUIRED)
   find_package(rmw_fastrtps_cpp QUIET)
@@ -85,6 +86,10 @@ if(BUILD_TESTING)
         rosbag2_test_common
         test_msgs)
     endif()
+
+    ament_add_pytest_test(test_compression_with_splitting
+      test/rosbag2_tests/test_compression_with_splitting.py)
+
   endif()
 endif()
 
