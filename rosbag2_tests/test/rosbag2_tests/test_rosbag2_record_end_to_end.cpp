@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_set>
 
+#include "ament_index_cpp/get_package_share_directory.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rcpputils/filesystem_helper.hpp"
 #include "rcutils/filesystem.h"
@@ -411,6 +412,110 @@ TEST_F(RecordFixture, record_end_to_end_with_splitting_splits_bagfile) {
   }
 }
 
+#ifdef _WIN32
+TEST_F(RecordFixture, record_end_to_end_test_with_zstd_file_compression_compresses_files) {
+  constexpr const char topic_name[] = "/test_topic";
+  constexpr const int bagfile_split_size = 4 * 1024 * 1024;  // 4MB.
+
+  std::stringstream command;
+  command << "ros2 bag record" <<
+    " --output " << root_bag_path_.string() <<
+    " --max-bag-size " << bagfile_split_size <<
+    " --compression-mode file" <<
+    " --compression-format zstd"
+    " " << topic_name;
+
+  STARTUPINFO start_up_info{};
+  PROCESS_INFORMATION process_info{};
+  // Create the command string. ex:
+  // python command_wrapper.py -c "ros2 bag record -a"
+  const char python_command[] = "python command_wrapper.py -c \"";
+  size_t command_size = strlen(python_command) + command.str().length() + 2;
+  char* command_str = new char[command_size];
+  strcpy_s(command_str, command_size, python_command);
+  strcat_s(command_str, command_size, command.str().c_str());
+  strcat_s(command_str, command_size, "\"");
+  std::cout << "Executing: " << command_str << std::endl;
+  // Throws PackageNotFoundError if package is not found
+  auto package_dir = ament_index_cpp::get_package_share_directory("rosbag2_test_common");
+  package_dir += "\\utils";
+  std::cout << "in " << package_dir << std::endl;
+
+  CreateProcess(
+    nullptr,
+    command_str,
+    nullptr,
+    nullptr,
+    false,
+    0,
+    nullptr,
+    package_dir.c_str(),
+    &start_up_info,
+    &process_info);
+  delete command_str;
+
+  std::cout << "wait_for_db" << std::endl;
+  wait_for_db();
+
+  std::cout << "creating pipe" << std::endl;
+  LPTSTR lpszPipename = TEXT("\\\\.\\pipe\\rosbag2_tests");
+  HANDLE hPipe;
+  LPTSTR lpvMessage = TEXT("CTRL_C_EVENT");
+  std::cout << "Creating pipe" << std::endl;
+  while (1) {
+    hPipe = CreateFile(
+      lpszPipename,   // pipe name 
+      GENERIC_WRITE,
+      0,              // no sharing 
+      NULL,           // default security attributes
+      OPEN_EXISTING,  // opens existing pipe 
+      0,              // default attributes 
+      NULL);          // no template file 
+
+    // Break if the pipe handle is valid. 
+    if (hPipe != INVALID_HANDLE_VALUE) {
+      break;
+    }
+    // Exit if an error other than ERROR_PIPE_BUSY occurs. 
+    if (GetLastError() != ERROR_PIPE_BUSY) {
+      std::cout << "Could not open pipe. (" << GetLastError() << ")" << std::endl;
+      return;
+    }
+    // All pipe instances are busy, so wait for 10 seconds. 
+    if (!WaitNamedPipe(lpszPipename, 10000)) {
+      std::cout << "Could not open pipe: 10 second wait timed out." << std::endl;
+      return;
+    }
+  }
+  DWORD cbToWrite = (lstrlen(lpvMessage) + 1) * sizeof(TCHAR);
+  std::cout << "Sending " << cbToWrite << " byte message: \"" << lpvMessage << "\"" << std::endl;
+  DWORD cbWritten;
+  BOOL fSuccess = WriteFile(
+    hPipe,                  // pipe handle 
+    lpvMessage,             // message 
+    cbToWrite,              // message length 
+    &cbWritten,             // bytes written 
+    NULL);                  // not overlapped
+  if (!fSuccess) {
+    std::cout << "WriteFile to pipe failed. (" << GetLastError() << ")" << std::endl;
+    return;
+  }
+
+  rosbag2_storage::MetadataIo metadata_io;
+  const auto metadata = metadata_io.read_metadata(root_bag_path_.string());
+
+  for (const auto& path : metadata.relative_file_paths) {
+    const auto file_path = rcpputils::fs::path{path};
+
+    EXPECT_TRUE(file_path.exists()) << "File: \"" <<
+      file_path.string() << "\" does not exist!";
+    EXPECT_EQ(file_path.extension().string(), ".zstd") << "File :\"" <<
+      file_path.string() << "\" does not have proper \".zstd\" extension!";
+  }
+}
+#endif
+
+#ifndef _WIN32
 TEST_F(RecordFixture, record_end_to_end_test_with_zstd_file_compression_compresses_files) {
   constexpr const char topic_name[] = "/test_topic";
   constexpr const int bagfile_split_size = 4 * 1024 * 1024;  // 4MB.
@@ -483,6 +588,7 @@ TEST_F(RecordFixture, record_end_to_end_test_with_zstd_file_compression_compress
       file_path.string() << "\" does not have proper \".zstd\" extension!";
   }
 }
+#endif
 
 TEST_F(RecordFixture, record_fails_gracefully_if_bag_already_exists) {
   auto database_path = _SRC_RESOURCES_DIR_PATH;  // variable defined in CMakeLists.txt
