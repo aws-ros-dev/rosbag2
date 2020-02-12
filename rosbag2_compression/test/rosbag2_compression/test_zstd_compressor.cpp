@@ -27,6 +27,8 @@
 #include "rosbag2_compression/zstd_decompressor.hpp"
 
 #include "rosbag2_test_common/temporary_directory_fixture.hpp"
+#include "rosbag2_test_common/memory_management.hpp"
+#include "test_msgs/message_fixtures.hpp"
 
 #include "gmock/gmock.h"
 
@@ -199,4 +201,22 @@ TEST_F(CompressionHelperFixture, zstd_decompress_fails_on_bad_uri)
 
   EXPECT_THROW(decompressor.decompress_uri(bad_uri), std::runtime_error) <<
     "Expected decompress_uri(\"" << bad_uri << "\") to fail!";
+}
+
+TEST(test_zstd_message_compression, zstd_decompresses_message)
+{
+  auto memory_management = rosbag2_test_common::MemoryManagement();
+  auto primitive_message1 = get_messages_basic_types()[0];
+  primitive_message1->int32_value = 42;
+  auto bag_msg = std::make_shared<rosbag2_storage::SerializedBagMessage>();
+  bag_msg->serialized_data = memory_management.serialize_message(primitive_message1);
+  bag_msg->time_stamp = 500 * 1000000;
+  bag_msg->topic_name = "topic1";
+  const auto initial_size = bag_msg->serialized_data->buffer_length;
+
+  auto zstd_compressor = rosbag2_compression::ZstdCompressor{};
+
+  zstd_compressor.compress_serialized_bag_message(bag_msg.get());
+
+  EXPECT_LT(initial_size, bag_msg->serialized_data->buffer_length);
 }

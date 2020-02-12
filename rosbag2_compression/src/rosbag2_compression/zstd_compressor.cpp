@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "rcutils/filesystem.h"
+#include "rmw/types.h"
 
 #include "rosbag2_compression/zstd_compressor.hpp"
 
@@ -217,9 +218,34 @@ std::string ZstdCompressor::compress_uri(const std::string & uri)
 }
 
 void ZstdCompressor::compress_serialized_bag_message(
-  rosbag2_storage::SerializedBagMessage *)
+  rosbag2_storage::SerializedBagMessage * message)
 {
-  throw std::logic_error{"Not implemented"};
+  const auto compressed_buffer_length = ZSTD_compressBound(message->serialized_data->buffer_length);
+
+  const auto rcutils_allocator = rcutils_get_default_allocator();
+  auto new_message = new rmw_serialized_message_t;
+  *new_message = rmw_get_zero_initialized_serialized_message();
+  auto ret = rmw_serialized_message_init(new_message, compressed_buffer_length, &rcutils_allocator);
+  if (ret != RCUTILS_RET_OK) {
+    throw std::runtime_error(
+      "Error allocating resources for serialized message: " +
+      std::string(rcutils_get_error_string().str));
+  }
+
+  const auto compression_result = ZSTD_compress(
+    new_message->buffer, new_message->buffer_capacity,
+    message->serialized_data->buffer, message->serialized_data->buffer_length,
+    kDefaultZstdCompressionLevel);
+  throw_on_zstd_error(compression_result);
+  std::cout << "message buffer_length: " << message->serialized_data->buffer_length << std::endl;
+  std::cout << "compressed_buffer_length: " << compressed_buffer_length << std::endl;
+  std::cout << "new_message->buffer_capacity: " << new_message->buffer_capacity << std::endl;
+  std::cout << "new_message->buffer_length: " << new_message->buffer_length << std::endl;
+  std::cout << "compression_result: " << compression_result << std::endl;
+  std::copy(new_message->buffer, new_message->buffer + compression_result,
+    message->serialized_data->buffer);
+  //*message->serialized_data->buffer = *new_message->buffer;
+  std::cout << "After compression " << *new_message->buffer << std::endl;
 }
 
 std::string ZstdCompressor::get_compression_identifier() const

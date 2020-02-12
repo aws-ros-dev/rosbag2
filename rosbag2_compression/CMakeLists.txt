@@ -30,6 +30,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rcpputils REQUIRED)
 find_package(rcutils REQUIRED)
+find_package(rmw REQUIRED)
 find_package(rosbag2_cpp)
 find_package(rosbag2_storage REQUIRED)
 find_package(zstd_vendor REQUIRED)
@@ -47,7 +48,8 @@ target_link_libraries(${PROJECT_NAME}_zstd ${zstd_vendor_LIBRARIES})
 ament_target_dependencies(${PROJECT_NAME}_zstd
   rcpputils
   rcutils
-  rosbag2_storage)
+  rosbag2_storage
+  rmw)
 # Causes the visibility macros to use dllexport rather than dllimport.
 # This is appropriate when building the dll but not consuming it.
 target_compile_definitions(${PROJECT_NAME}_zstd
@@ -96,6 +98,7 @@ if(BUILD_TESTING)
   find_package(ament_cmake_gmock REQUIRED)
   find_package(ament_lint_auto REQUIRED)
   find_package(rosbag2_test_common REQUIRED)
+  find_package(test_msgs REQUIRED)
   ament_lint_auto_find_test_dependencies()
 
   add_library(fake_compressor SHARED
@@ -131,7 +134,7 @@ if(BUILD_TESTING)
     test/rosbag2_compression/test_zstd_compressor.cpp)
   target_include_directories(test_zstd_compressor PUBLIC include)
   target_link_libraries(test_zstd_compressor ${PROJECT_NAME}_zstd)
-  ament_target_dependencies(test_zstd_compressor rosbag2_test_common rosbag2_storage)
+  ament_target_dependencies(test_zstd_compressor rosbag2_test_common rosbag2_storage test_msgs)
 
   ament_add_gmock(test_compression_options
     test/rosbag2_compression/test_compression_options.cpp)
