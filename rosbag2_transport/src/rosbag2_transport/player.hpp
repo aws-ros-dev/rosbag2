@@ -65,6 +65,11 @@ private:
   std::shared_ptr<rosbag2_cpp::Reader> reader_;
   moodycamel::ReaderWriterQueue<ReplayableMessage> message_queue_;
   std::chrono::time_point<std::chrono::system_clock> start_time_;
+
+  std::chrono::time_point<std::chrono::system_clock> overall_start_time_;
+  bool first_message_timestamp_not_set = true;
+  rcutils_time_point_value_t first_message_timestamp;
+
   mutable std::future<void> storage_loading_future_;
   std::shared_ptr<Rosbag2Node> rosbag2_transport_;
   std::unordered_map<std::string, std::shared_ptr<GenericPublisher>> publishers_;

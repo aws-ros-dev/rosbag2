@@ -149,14 +149,18 @@ bool SequentialCompressionReader::has_next_file() const
   return current_file_iterator_ + 1 != file_paths_.end();
 }
 
-void SequentialCompressionReader::load_next_file()
-{
+bool SequentialCompressionReader::require_decompression() const {
+  return compression_mode_ != rosbag2_compression::CompressionMode::NONE;
+}
+
+void SequentialCompressionReader::load_next_file() {
   if (current_file_iterator_ == file_paths_.end()) {
     throw std::runtime_error{"Cannot load next file; already on last file!"};
   }
 
-  if (decompressor_) {
-    throw std::runtime_error{"Bagfile is not opened"};
+  if (require_decompression() && decompressor_ == nullptr) {
+    throw std::runtime_error{"Decompression is required to load files, "
+                             "but the decompressor is not initialized (null)!"};
   }
 
   ++current_file_iterator_;

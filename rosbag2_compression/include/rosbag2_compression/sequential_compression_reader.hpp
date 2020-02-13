@@ -135,6 +135,13 @@ private:
     const std::string & converter_serialization_format,
     const std::string & storage_serialization_format);
 
+  /**
+   * Checks if the compression mode is set to something other than
+   * rosbag2_compression::CompressionMode::NONE
+   * @return true if decompression is required, false otherwise
+   */
+  bool SequentialCompressionReader::require_decompression() const;
+
   std::unique_ptr<rosbag2_storage::StorageFactoryInterface> storage_factory_{};
   std::shared_ptr<rosbag2_cpp::SerializationFormatConverterFactoryInterface> converter_factory_{};
   std::shared_ptr<rosbag2_storage::storage_interfaces::ReadOnlyInterface> storage_{};

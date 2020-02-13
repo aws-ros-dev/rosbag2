@@ -96,7 +96,7 @@ void Rosbag2Transport::play(
     reader_->open(storage_options, {"", rmw_get_serialization_format()});
 
     auto transport_node = setup_node(play_options.node_prefix);
-
+    ROSBAG2_TRANSPORT_LOG_INFO("Rosbag2Transport::play");
     Player player(reader_, transport_node);
     player.play(play_options);
   } catch (std::runtime_error & e) {

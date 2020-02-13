@@ -58,6 +58,7 @@ bool Player::is_storage_completely_loaded() const
 
 void Player::play(const PlayOptions & options)
 {
+  overall_start_time_ = std::chrono::system_clock::now();
   prepare_publishers();
 
   storage_loading_future_ = std::async(
@@ -138,6 +139,24 @@ void Player::play_messages_until_queue_empty()
   while (message_queue_.try_dequeue(message) && rclcpp::ok()) {
     std::this_thread::sleep_until(start_time_ + message.time_since_start);
     if (rclcpp::ok()) {
+
+
+      if(first_message_timestamp_not_set) {
+        // set the first message point of reference
+        first_message_timestamp = message.message->time_stamp;
+        first_message_timestamp_not_set = !first_message_timestamp_not_set;
+      } else {
+        // get the delay (seconds) when the user started playing
+        auto now = std::chrono::system_clock::now();
+        std::chrono::duration<double> playback_difference = now - overall_start_time_;
+        // get the message delay (nanoseconds) from their timestamps
+        std::chrono::nanoseconds diff_nanos{message.message->time_stamp - first_message_timestamp};
+        auto realtime_diff_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(diff_nanos);
+
+        ROSBAG2_TRANSPORT_LOG_INFO_STREAM("DELAY: {playback_diff_seconds: " << playback_difference.count() <<
+           ", realtime_diff_seconds: " << realtime_diff_milliseconds.count() / 1000.0 << "}");
+      }
+
       publishers_[message.message->topic_name]->publish(message.message->serialized_data);
     }
   }
