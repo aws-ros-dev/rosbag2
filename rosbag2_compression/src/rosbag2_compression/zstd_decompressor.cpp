@@ -213,7 +213,7 @@ void print_decompression_statistics(
   const auto decompression_ratio =
     static_cast<double>(decompressed_size) / static_cast<double>(compressed_size);
 
-  ROSBAG2_COMPRESSION_LOG_DEBUG_STREAM(
+  ROSBAG2_COMPRESSION_LOG_INFO_STREAM(
     "\"Decompression statistics\" : {" <<
       "\"Time\" : " << (duration.count() / 1000.0) <<
       ", \"Decompression Ratio\" : " << decompression_ratio <<

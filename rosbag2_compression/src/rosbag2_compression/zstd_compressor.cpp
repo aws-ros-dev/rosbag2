@@ -177,7 +177,7 @@ void print_compression_statistics(
   const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
   const auto compression_ratio =
     static_cast<double>(decompressed_size) / static_cast<double>(compressed_size);
-  ROSBAG2_COMPRESSION_LOG_DEBUG_STREAM(
+  ROSBAG2_COMPRESSION_LOG_INFO_STREAM(
     "\"Compression statistics\" : {" <<
       "\"Time\" : " << (duration.count() / 1000.0) <<
       ", \"Compression Ratio\" : " << compression_ratio <<
