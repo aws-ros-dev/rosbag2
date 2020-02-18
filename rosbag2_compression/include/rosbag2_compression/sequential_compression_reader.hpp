@@ -140,7 +140,7 @@ private:
    * rosbag2_compression::CompressionMode::NONE
    * @return true if decompression is required, false otherwise
    */
-  bool SequentialCompressionReader::require_decompression() const;
+  bool require_decompression() const;
 
   std::unique_ptr<rosbag2_storage::StorageFactoryInterface> storage_factory_{};
   std::shared_ptr<rosbag2_cpp::SerializationFormatConverterFactoryInterface> converter_factory_{};
