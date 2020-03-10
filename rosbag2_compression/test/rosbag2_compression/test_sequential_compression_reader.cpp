@@ -37,7 +37,8 @@ class SequentialCompressionReaderTest : public Test
 {
 public:
   SequentialCompressionReaderTest()
-  : storage_factory_{std::make_unique<StrictMock<MockStorageFactory>>()},
+  : compression_factory_{std::make_unique<rosbag2_compression::CompressionFactory>()},
+    storage_factory_{std::make_unique<StrictMock<MockStorageFactory>>()},
     storage_{std::make_shared<NiceMock<MockStorage>>()},
     converter_factory_{std::make_shared<StrictMock<MockConverterFactory>>()},
     metadata_io_{std::make_unique<NiceMock<MockMetadataIo>>()},
@@ -54,6 +55,7 @@ public:
     ON_CALL(*storage_factory_, open_read_only(_, _)).WillByDefault(Return(storage_));
   }
 
+  std::unique_ptr<rosbag2_compression::CompressionFactory> compression_factory_;
   std::unique_ptr<StrictMock<MockStorageFactory>> storage_factory_;
   std::shared_ptr<NiceMock<MockStorage>> storage_;
   std::shared_ptr<StrictMock<MockConverterFactory>> converter_factory_;
